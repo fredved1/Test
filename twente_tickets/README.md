@@ -1,7 +1,7 @@
 # FC Twente ticket monitor
 
 Kijkt continu op de ticketshop of er plekken vrijkomen in de vakken die je wilt,
-en stuurt een push-alert (ntfy en/of Telegram). **Koopt niet zelf**: je krijgt een alert en koopt zelf.
+en stuurt een Telegram-bericht (optioneel ook ntfy). **Koopt niet zelf**: je krijgt een alert en koopt zelf.
 
 ## Installatie op de VPS (Ubuntu/Debian)
 
@@ -12,16 +12,30 @@ cd /opt/twente_tickets
 sudo python3 -m venv venv
 sudo venv/bin/pip install -r requirements.txt
 sudo venv/bin/playwright install --with-deps chromium
-sudo cp .env.example .env && sudo nano .env      # vul inlog, NTFY_TOPIC, vakken in
+sudo cp .env.example .env && sudo nano .env      # vul inlog, vakken en Telegram in (zie hieronder)
 sudo chmod 600 .env
 ```
 
-Alerts op je telefoon: installeer de app **ntfy**, abonneer je op het topic dat je in
-`NTFY_TOPIC` hebt gezet, en test daarna:
+## Telegram-bot aanmaken (5 minuten)
 
-```bash
-sudo venv/bin/python monitor.py test-alert
-```
+1. Open Telegram, zoek **@BotFather** (blauw vinkje) en stuur `/newbot`.
+2. Geef een naam (bijv. `Twente Tickets`) en een gebruikersnaam die op `bot` eindigt
+   (bijv. `twente_tickets_thomas_bot`).
+3. BotFather stuurt je een **token** zoals `123456789:AAH...`. Zet die in `.env` als
+   `TELEGRAM_BOT_TOKEN=...`. Deel dit token met niemand: wie het heeft, kan je bot besturen.
+4. Klik in het bericht van BotFather op de link naar je bot en stuur hem `/start`.
+   (Zonder deze stap mag de bot jou geen berichten sturen.)
+5. Haal je chat-ID op:
+   ```bash
+   sudo venv/bin/python monitor.py telegram-chat-id
+   ```
+   Zet de regel die hij print (`TELEGRAM_CHAT_ID=...`) in `.env`.
+6. Test:
+   ```bash
+   sudo venv/bin/python monitor.py test-alert
+   ```
+   Je hoort nu een bericht "Test" van je bot te krijgen. Zet in Telegram de meldingen
+   voor deze chat aan (niet dempen), zodat je het direct hoort.
 
 ## Stap 1: discover (verplicht)
 

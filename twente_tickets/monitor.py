@@ -4,6 +4,7 @@ next to each other). It only alerts; buying is done by hand.
 
 Usage:
     python monitor.py discover   # one run; saves HTML, screenshot, JSON to state/discover
+    python monitor.py telegram-chat-id  # print your Telegram chat id
     python monitor.py test-alert # send a test notification
     python monitor.py            # monitor continuously
 """
@@ -63,17 +64,36 @@ def alert(title, message, priority="urgent"):
             log(f"ntfy failed: {e}")
     if TG_TOKEN and TG_CHAT:
         try:
-            requests.post(
+            r = requests.post(
                 f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage",
-                json={"chat_id": TG_CHAT, "text": f"{title}\n\n{message}\n{EVENT_URL}"},
+                json={"chat_id": TG_CHAT, "text": f"\U0001F6A8 {title}\n\n{message}\n\n{EVENT_URL}",
+                      "disable_notification": priority in ("low", "min")},
                 timeout=10,
             )
-            sent = True
+            if r.ok:
+                sent = True
+            else:
+                log(f"telegram failed: {r.status_code} {r.text[:200]}")
         except requests.RequestException as e:
             log(f"telegram failed: {e}")
     if not sent:
-        log("WARNING: no alert channel configured (NTFY_TOPIC / TELEGRAM_*)")
+        log("WARNING: alert not delivered (check TELEGRAM_* / NTFY_TOPIC and errors above)")
     log(f"ALERT: {title} | {message}")
+
+
+def telegram_chat_id():
+    """Print the chat id of whoever last messaged the bot (send it /start first)."""
+    if not TG_TOKEN:
+        sys.exit("Zet eerst TELEGRAM_BOT_TOKEN in .env")
+    r = requests.get(f"https://api.telegram.org/bot{TG_TOKEN}/getUpdates", timeout=10).json()
+    if not r.get("ok"):
+        sys.exit(f"Token klopt niet: {r}")
+    chats = {u["message"]["chat"]["id"]: u["message"]["chat"].get("first_name", "")
+             for u in r["result"] if "message" in u}
+    if not chats:
+        sys.exit("Geen berichten gevonden. Stuur je bot eerst /start in Telegram en probeer opnieuw.")
+    for cid, name in chats.items():
+        print(f"TELEGRAM_CHAT_ID={cid}   ({name})")
 
 
 # ---------------------------------------------------------------- browser
@@ -268,6 +288,8 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "run"
     if mode == "discover":
         discover()
+    elif mode == "telegram-chat-id":
+        telegram_chat_id()
     elif mode == "test-alert":
         alert("Test", "Als je dit ziet werken de alerts.")
     else:
